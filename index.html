@@ -1,14 +1,300 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Big Coat Today?</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Default font */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 2s ease;
+        }
+        /* Custom font for the hand-drawn look */
+        .font-kalam {
+            font-family: 'Kalam', cursive;
+        }
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/react-app/main.tsx"></script>
-  </body>
+        /* --- Dynamic Backgrounds --- */
+        .bg-day-clear { background: linear-gradient(to top, #a1c4fd 0%, #c2e9fb 100%); }
+        .bg-day-cloudy { background: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%); }
+        .bg-night-clear { background: linear-gradient(to top, #2c3e50, #4b6cb7); }
+        .bg-night-cloudy { background: linear-gradient(to top, #3E5151, #DECBA4); }
+        .bg-rain { background: linear-gradient(to top, #6c7a89, #b2c5d3); }
+
+        /* Simple animation for loading */
+        @keyframes pulse {
+            50% { opacity: .5; }
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* Rain Animation */
+        .rain-animation::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAA8CAYAAABbC+QYAAAAAXNSR0IArs4c6QAAAKpJREFUWEft0rENgCAQBEFNnMBKNkM72I4FvEEvEESzSUCj1P8EwZ8L7sRz1g3uOQ8AAAAAAAAAAAAAAAAA4F0p5wUu7g/gdwISuHEf4G4CgXgO4F4iQbzfP0D8DkC8B3CvIsH/cQ+I3wEIxHOAe40E8X7/APU7APEeQLyLBP/HPUD9DkC8BxCvIcH/cQ9QvwP4v8/fA07iP8A9AAAAAAAAAAAAAAAAAMAb2A8u2s9jBv9/DQAAAABJRU5ErkJggg==');
+            animation: rain 0.5s linear infinite;
+            z-index: -1;
+            opacity: 0.5;
+        }
+        @keyframes rain {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 20% 100%; }
+        }
+
+    </style>
+</head>
+<body class="text-slate-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app-container" class="w-full max-w-md mx-auto bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 md:p-8 border border-white/30">
+        
+        <!-- Loading State -->
+        <div id="loading" class="text-center">
+            <p class="text-lg font-semibold text-slate-500">Fetching the sky's secrets...</p>
+            <div class="animate-pulse mt-4">
+                <div class="h-8 bg-slate-200/50 rounded-md w-3/4 mx-auto"></div>
+                <div class="flex justify-around mt-6">
+                    <div class="h-24 bg-slate-200/50 rounded-full w-24"></div>
+                    <div class="h-24 bg-slate-200/50 rounded-full w-24"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="hidden text-center">
+            <h2 class="text-xl font-bold text-red-600">Oops!</h2>
+            <p id="error-message" class="mt-2 text-slate-700">Could not get your location. Please allow location access and refresh the page.</p>
+        </div>
+
+        <!-- Main Content -->
+        <div id="weather-content" class="hidden">
+            <h1 id="main-question" class="font-kalam text-4xl md:text-5xl text-center font-bold text-slate-800">What to wear?</h1>
+            
+            <!-- Recommendations Section -->
+            <div class="mt-6 mb-8 flex justify-around items-start text-center">
+                <!-- Clothing Recommendation -->
+                <div class="w-1/2 px-2">
+                    <div id="clothing-icon" class="w-24 h-24 mx-auto transition-all duration-500 ease-in-out transform hover:scale-110"></div>
+                    <p id="clothing-text" class="mt-2 text-md font-semibold text-slate-700"></p>
+                </div>
+                <!-- Umbrella Recommendation -->
+                <div class="w-1/2 px-2">
+                    <div id="umbrella-icon" class="w-24 h-24 mx-auto transition-all duration-500 ease-in-out transform hover:scale-110"></div>
+                    <p id="umbrella-text" class="mt-2 text-md font-semibold text-slate-700"></p>
+                </div>
+            </div>
+
+            <!-- Forecast Section -->
+            <div>
+                <!-- Next 3 Hours -->
+                <div class="mb-6">
+                    <h3 class="font-semibold text-slate-600 mb-3 text-center">Next 3 hours:</h3>
+                    <div id="hourly-forecast" class="flex justify-around items-center text-center">
+                        <!-- Hourly circles will be injected here -->
+                    </div>
+                </div>
+
+                <!-- All Day -->
+                <div>
+                    <h3 class="font-semibold text-slate-600 mb-3 text-center">All day:</h3>
+                    <div id="daily-forecast" class="flex justify-around items-center text-center">
+                         <!-- Daily circle will be injected here -->
+                    </div>
+                </div>
+            </div>
+             <p id="location" class="text-center text-xs text-slate-500 mt-6"></p>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const errorMessageEl = document.getElementById('error-message');
+            const weatherContentEl = document.getElementById('weather-content');
+            const locationEl = document.getElementById('location');
+            const bodyEl = document.body;
+
+            // --- SVG Icons ---
+            const icons = {
+                'tshirt': `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>`,
+                'hoodie': `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500"><path d="M3.5 21a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5V15h14V7.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-17a.5.5 0 0 1-.5-.5zM20.5 7.5H19V4a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3.5H3.5"></path><path d="M6 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3z"></path></svg>`,
+                'jacket': `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M21 8L10.43 18.57a2 2 0 0 1-2.83 0L3 13.71a2 2 0 0 1 0-2.83L13.57 3A2 2 0 0 1 16.4 3l4.6 4.6a2 2 0 0 1 0 2.83z"></path><path d="m-2 24 6-6"></path><path d="m13.5 6.5 6 6"></path></svg>`,
+                'coat': `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M12 22a2 2 0 0 0 2-2H10a2 2 0 0 0 2 2z"></path><path d="M18 8a6 6 0 0 0-12 0V10H4v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4h-2v-2h2V10h-2z"></path></svg>`,
+                'umbrella': `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-rose-500"><path d="M22 12a10.06 10.06 0 0 0-20 0Z"></path><path d="M12 12v8a2 2 0 0 0 4 0"></path><path d="M12 2v1"></path></svg>`,
+                'no-umbrella': `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`
+            };
+
+            const showError = (message) => {
+                errorMessageEl.textContent = message;
+                loadingEl.style.display = 'none';
+                weatherContentEl.style.display = 'none';
+                errorEl.style.display = 'block';
+            };
+
+            function getWeatherAndLocation() {
+                if (navigator.geolocation) {
+                    // Set a timeout for the location request
+                    const locationOptions = {
+                        enableHighAccuracy: false,
+                        timeout: 8000,
+                        maximumAge: 0,
+                    };
+                    navigator.geolocation.getCurrentPosition(fetchWeather, handleLocationError, locationOptions);
+                } else {
+                    showError("Geolocation is not supported by this browser.");
+                }
+            }
+
+            function handleLocationError(error) {
+                // ... same as before ...
+            }
+
+            async function fetchWeather(position) {
+                const { latitude, longitude } = position.coords;
+                // Added is_day and cloud_cover to the API call
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,precipitation,is_day,cloud_cover&hourly=temperature_2m,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`;
+
+                try {
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) throw new Error(`Weather API returned status: ${response.status}`);
+                    const data = await response.json();
+                    
+                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const geoData = await geoResponse.json();
+                    const city = geoData.address.city || geoData.address.town || geoData.address.village || 'your location';
+                    
+                    updateUI(data, city);
+
+                } catch (err) {
+                    console.error("Failed to fetch weather data:", err);
+                    showError("Sorry, couldn't get the weather. Please try again later.");
+                }
+            }
+
+            function updateUI(weatherData, city) {
+                const { current, hourly, daily } = weatherData;
+                const now = new Date();
+                const currentHour = now.getHours();
+
+                // --- Clothing Recommendation ---
+                const temp = current.apparent_temperature;
+                let clothingRec = '';
+                let clothingIcon = '';
+
+                if (temp < 5) {
+                    clothingRec = 'Big coat time.';
+                    clothingIcon = icons.coat;
+                } else if (temp >= 5 && temp < 12) {
+                    clothingRec = 'A  good jacket would be smart.';
+                    clothingIcon = icons.jacket;
+                } else if (temp >= 12 && temp < 18) {
+                    clothingRec = 'A hoodie should be fine.';
+                    clothingIcon = icons.hoodie;
+                } else {
+                    clothingRec = 'T-shirt weather!';
+                    clothingIcon = icons.tshirt;
+                }
+                document.getElementById('clothing-icon').innerHTML = clothingIcon;
+                document.getElementById('clothing-text').textContent = clothingRec;
+
+                // --- Umbrella Recommendation ---
+                const isRainingNow = current.precipitation > 0;
+                const willRainToday = daily.precipitation_probability_max[0] > 40;
+                let umbrellaRec = '';
+                let umbrellaIcon = '';
+
+                if (isRainingNow || willRainToday) {
+                    umbrellaRec = isRainingNow ? 'It\'s raining now - bring a brolly.' : 'Might rain later. Bring a brolly.';
+                    umbrellaIcon = icons.umbrella;
+                } else {
+                    umbrellaRec = 'Clear skies ahead.';
+                    umbrellaIcon = icons['no-umbrella'];
+                }
+                document.getElementById('umbrella-icon').innerHTML = umbrellaIcon;
+                document.getElementById('umbrella-text').textContent = umbrellaRec;
+
+                // --- Update Background ---
+                updateBackgroundAndEffects(current);
+
+                // --- Update Location Text ---
+                locationEl.textContent = `Weather for ${city} | Updated: ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+
+                // --- Hourly Forecast ---
+                const hourlyForecastContainer = document.getElementById('hourly-forecast');
+                hourlyForecastContainer.innerHTML = '';
+                for (let i = 1; i <= 3; i++) {
+                    const hourIndex = currentHour + i;
+                    if (hourIndex < hourly.time.length) {
+                        const hourTemp = Math.round(hourly.temperature_2m[hourIndex]);
+                        const hourRain = hourly.precipitation_probability[hourIndex];
+                        const displayHour = new Date(hourly.time[hourIndex]).getHours();
+
+                        const circle = document.createElement('div');
+                        circle.className = 'flex flex-col items-center';
+                        circle.innerHTML = `
+                            <div class="w-20 h-20 bg-white/50 rounded-full flex flex-col justify-center items-center border-2 border-white/80 shadow-inner">
+                                <div class="text-xl font-bold">${hourTemp}°</div>
+                                <div class="text-xs text-blue-800 font-semibold">${hourRain}% rain</div>
+                            </div>
+                            <div class="mt-1 font-kalam text-slate-700 font-semibold">${displayHour}:00</div>
+                        `;
+                        hourlyForecastContainer.appendChild(circle);
+                    }
+                }
+
+                // --- Daily Forecast ---
+                const dailyForecastContainer = document.getElementById('daily-forecast');
+                dailyForecastContainer.innerHTML = '';
+                const dailyHigh = Math.round(daily.temperature_2m_max[0]);
+                const dailyLow = Math.round(daily.temperature_2m_min[0]);
+                const dailyRain = daily.precipitation_probability_max[0];
+                const dailyCircle = document.createElement('div');
+                dailyCircle.className = 'flex flex-col items-center';
+                dailyCircle.innerHTML = `
+                    <div class="w-24 h-24 bg-white/50 rounded-full flex flex-col justify-center items-center border-2 border-white/80 shadow-inner">
+                        <div class="text-sm font-semibold text-red-600">H: ${dailyHigh}°</div>
+                        <div class="text-sm font-semibold text-blue-600">L: ${dailyLow}°</div>
+                        <div class="text-xs text-sky-700 mt-1">${dailyRain}% rain</div>
+                    </div>
+                `;
+                dailyForecastContainer.appendChild(dailyCircle);
+
+                // Show content
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'none';
+                weatherContentEl.style.display = 'block';
+            }
+
+            function updateBackgroundAndEffects(current) {
+                bodyEl.className = 'text-slate-800 flex items-center justify-center min-h-screen p-4'; // Reset classes
+                
+                if (current.precipitation > 0) {
+                    bodyEl.classList.add('bg-rain', 'rain-animation');
+                } else if (current.is_day === 1) {
+                    bodyEl.classList.add(current.cloud_cover > 60 ? 'bg-day-cloudy' : 'bg-day-clear');
+                } else { // Night time
+                    bodyEl.classList.add(current.cloud_cover > 60 ? 'bg-night-cloudy' : 'bg-night-clear');
+                }
+            }
+
+            // Initial call
+            getWeatherAndLocation();
+
+            // Refresh every hour
+            setInterval(getWeatherAndLocation, 3600000); 
+        });
+    </script>
+</body>
 </html>
